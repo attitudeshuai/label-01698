@@ -190,7 +190,8 @@ function formatDate(date) {
 }
 
 function generateId() {
-    return Date.now() + Math.random().toString(36).substr(2, 9);
+    // 生成纯数字ID，避免onclick绑定时字符串解析问题
+    return Date.now() + Math.floor(Math.random() * 10000);
 }
 
 // ========================================
@@ -204,7 +205,8 @@ function showForm(formType) {
 }
 
 function login(username, password, role) {
-    const user = AppState.users.find(u => u.username === username && u.password === password);
+    // 验证用户名、密码和角色
+    const user = AppState.users.find(u => u.username === username && u.password === password && u.role === role);
     if (user) {
         AppState.currentUser = user;
         document.getElementById('login-page').classList.add('hidden');
@@ -219,10 +221,13 @@ function login(username, password, role) {
             document.getElementById('admin-section').style.display = 'block';
         }
         
+        // 应用权限控制到导航菜单
+        applyPermissions(user.role);
+        
         initDashboard();
         showToast('登录成功，欢迎回来！', 'success');
     } else {
-        showToast('用户名或密码错误', 'error');
+        showToast('用户名、密码或角色不匹配', 'error');
     }
 }
 
@@ -268,9 +273,59 @@ function forgotPassword(email) {
 }
 
 // ========================================
+// 权限控制
+// ========================================
+// 模块名到权限键的映射
+const modulePermissionMap = {
+    'dashboard': 'dashboard',
+    'student-import': 'studentImport',
+    'student-add': 'studentAdd',
+    'student-edit': 'studentEdit',
+    'student-query': 'studentQuery',
+    'health-record': 'healthRecord',
+    'reward-record': 'rewardRecord',
+    'growth-record': 'growthRecord',
+    'grade-import': 'gradeImport',
+    'grade-analysis': 'gradeAnalysis',
+    'grade-trend': 'gradeTrend',
+    'grade-report': 'gradeReport',
+    'user-manage': 'userManage',
+    'permission': 'permission'
+};
+
+// 检查当前用户是否有指定模块的权限
+function hasPermission(moduleName) {
+    if (!AppState.currentUser) return false;
+    const role = AppState.currentUser.role;
+    const permKey = modulePermissionMap[moduleName];
+    if (!permKey) return true;
+    return MockData.permissions[role]?.[permKey] ?? false;
+}
+
+// 应用权限控制到导航菜单
+function applyPermissions(role) {
+    const permissions = MockData.permissions[role];
+    document.querySelectorAll('.nav-item').forEach(item => {
+        const moduleName = item.dataset.module;
+        const permKey = modulePermissionMap[moduleName];
+        if (permKey && !permissions[permKey]) {
+            item.style.display = 'none';
+        } else {
+            item.style.display = 'flex';
+        }
+    });
+}
+
+// ========================================
 // 模块切换
 // ========================================
 function switchModule(moduleName) {
+    // 权限校验
+    if (!hasPermission(moduleName)) {
+        showToast('您没有访问该模块的权限', 'error');
+        return;
+    }
+    
     AppState.currentModule = moduleName;
     
     // 更新导航状态
@@ -559,8 +614,8 @@ function loadStudentList(filters = {}) {
             <td>${student.leftBehindChild}</td>
             <td>
                 <div class="table-actions">
-                    <button class="btn-view" onclick="viewStudent(${student.id})">查看</button>
-                    <button class="btn-edit" onclick="editStudent(${student.id})">编辑</button>
+                    <button class="btn-view" onclick="viewStudent('${student.id}')">查看</button>
+                    <button class="btn-edit" onclick="editStudent('${student.id}')">编辑</button>
                 </div>
             </td>
         </tr>
@@ -653,8 +708,8 @@ function loadHealthRecords() {
             <td>${record.notes}</td>
             <td>
                 <div class="table-actions">
-                    <button class="btn-edit" onclick="editHealthRecord(${record.id})">编辑</button>
-                    <button class="btn-delete" onclick="deleteHealthRecord(${record.id})">删除</button>
+                    <button class="btn-edit" onclick="editHealthRecord('${record.id}')">编辑</button>
+                    <button class="btn-delete" onclick="deleteHealthRecord('${record.id}')">删除</button>
                 </div>
             </td>
         </tr>
@@ -780,8 +835,8 @@ function loadRewardRecords(filter = 'all') {
             <td>${record.recorder}</td>
             <td>
                 <div class="table-actions">
-                    <button class="btn-edit" onclick="editRewardRecord(${record.id})">编辑</button>
-                    <button class="btn-delete" onclick="deleteRewardRecord(${record.id})">删除</button>
+                    <button class="btn-edit" onclick="editRewardRecord('${record.id}')">编辑</button>
+                    <button class="btn-delete" onclick="deleteRewardRecord('${record.id}')">删除</button>
                 </div>
             </td>
         </tr>
@@ -1397,8 +1452,8 @@ function loadUserList() {
             <td>${user.createTime}</td>
             <td>
                 <div class="table-actions">
-                    <button class="btn-edit" onclick="editUser(${user.id})">编辑</button>
-                    <button class="btn-delete" onclick="deleteUser(${user.id})">删除</button>
+                    <button class="btn-edit" onclick="editUser('${user.id}')">编辑</button>
+                    <button class="btn-delete" onclick="deleteUser('${user.id}')">删除</button>
                 </div>
             </td>
         </tr>

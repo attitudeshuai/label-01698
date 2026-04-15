@@ -176,6 +176,10 @@
                         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2z"/></svg>
                         <span>奖惩记录</span>
                     </a>
+                    <a href="#" class="nav-item" data-module="attendance-record">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 7h-2v6h2v-6zm0-4h-2v2h2V6z"/></svg>
+                        <span>考勤管理</span>
+                    </a>
                     <a href="#" class="nav-item" data-module="growth-record">
                         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                         <span>成长档案</span>
@@ -757,10 +761,122 @@
                             <div class="growth-timeline" id="growth-timeline">
                             </div>
                         </div>
+            </div>
+        </div>
+
+        <!-- 考勤管理模块 -->
+        <div id="module-attendance-record" class="module-content">
+            <div class="module-header">
+                <h3>考勤管理</h3>
+                <p>管理学生考勤记录，支持按班级录入和按学生查询汇总</p>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="attendance-input">考勤录入</button>
+                <button class="tab-btn" data-tab="attendance-query">考勤查询</button>
+            </div>
+            
+            <!-- 考勤录入区域 -->
+            <div id="attendance-input-tab" class="tab-content active">
+                <div class="query-filters">
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label>选择班级</label>
+                            <select id="attendance-class">
+                                <option value="三年级一班">三年级一班</option>
+                                <option value="三年级二班">三年级二班</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label>考勤日期</label>
+                            <input type="date" id="attendance-date" value="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                        <button class="btn btn-primary" onclick="loadAttendanceForInput()">加载学生列表</button>
+                        <button class="btn btn-success" onclick="saveAllAttendance()" style="margin-left: 8px;">保存全部考勤</button>
                     </div>
                 </div>
+                <div class="query-results">
+                    <table class="data-table" id="attendance-input-table">
+                        <thead>
+                            <tr>
+                                <th>姓名</th>
+                                <th>性别</th>
+                                <th>班级</th>
+                                <th>考勤状态</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-input-list">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted);">请先选择班级和日期，点击加载学生列表</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 考勤查询区域 -->
+            <div id="attendance-query-tab" class="tab-content">
+                <div class="query-filters">
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <label>学生姓名</label>
+                            <input type="text" id="attendance-query-name" placeholder="输入学生姓名">
+                        </div>
+                        <div class="filter-item">
+                            <label>开始日期</label>
+                            <input type="date" id="attendance-start-date">
+                        </div>
+                        <div class="filter-item">
+                            <label>结束日期</label>
+                            <input type="date" id="attendance-end-date" value="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                        <button class="btn btn-primary" onclick="queryAttendanceSummary()">查询汇总</button>
+                    </div>
+                </div>
+                
+                <div id="attendance-summary" style="display: none; margin: 20px 0;">
+                    <div class="analysis-cards">
+                        <div class="analysis-card">
+                            <h4>总出勤天数</h4>
+                            <span class="value" id="total-attendance-days">0</span>
+                        </div>
+                        <div class="analysis-card">
+                            <h4>到校次数</h4>
+                            <span class="value" style="color: #48bb78;" id="present-count">0</span>
+                        </div>
+                        <div class="analysis-card">
+                            <h4>请假次数</h4>
+                            <span class="value" style="color: #ed8936;" id="leave-count">0</span>
+                        </div>
+                        <div class="analysis-card">
+                            <h4>缺勤次数</h4>
+                            <span class="value" style="color: #f56565;" id="absent-count">0</span>
+                        </div>
+                        <div class="analysis-card">
+                            <h4>出勤率</h4>
+                            <span class="value" id="attendance-rate">0%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="query-results" id="attendance-query-results" style="display: none;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>班级</th>
+                                <th>考勤状态</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-query-list">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
-                <!-- 成绩导入模块 -->
+        <!-- 成绩导入模块 -->
                 <div id="module-grade-import" class="module-content">
                     <div class="module-header">
                         <h3>成绩导入</h3>

@@ -997,6 +997,14 @@ input, select, textarea {
     box-shadow: var(--shadow-sm);
 }
 
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
 /* ========================================
    成长档案
    ======================================== */

@@ -13,6 +13,7 @@ const AppState = {
     healthRecords: [],
     rewardRecords: [],
     growthRecords: [],
+    attendanceRecords: [],
     users: [],
     chartInstances: {}
 };
@@ -53,6 +54,17 @@ const MockData = {
         { id: 3, studentId: 1, studentName: '张三', date: '2024-01-10', title: '入学记录', content: '张三同学正式入学，分配到三年级一班。' }
     ],
     
+    attendanceRecords: [
+        { id: 1, studentId: 1, studentName: '张三', className: '三年级一班', date: '2024-03-15', status: '到校' },
+        { id: 2, studentId: 2, studentName: '李四', className: '三年级一班', date: '2024-03-15', status: '到校' },
+        { id: 3, studentId: 3, studentName: '王五', className: '三年级二班', date: '2024-03-15', status: '请假' },
+        { id: 4, studentId: 4, studentName: '赵六', className: '三年级二班', date: '2024-03-15', status: '缺勤' },
+        { id: 5, studentId: 5, studentName: '钱七', className: '三年级一班', date: '2024-03-15', status: '到校' },
+        { id: 6, studentId: 1, studentName: '张三', className: '三年级一班', date: '2024-03-16', status: '到校' },
+        { id: 7, studentId: 2, studentName: '李四', className: '三年级一班', date: '2024-03-16', status: '请假' },
+        { id: 8, studentId: 3, studentName: '王五', className: '三年级二班', date: '2024-03-16', status: '到校' }
+    ],
+    
     exams: [
         { id: 1, name: '2024年春季期中考试', date: '2024-04-15', type: '期中' },
         { id: 2, name: '2024年春季期末考试', date: '2024-07-01', type: '期末' },
@@ -82,6 +94,7 @@ const MockData = {
             healthRecord: true,
             rewardRecord: true,
             growthRecord: true,
+            attendance: true,
             gradeImport: true,
             gradeAnalysis: true,
             gradeTrend: true,
@@ -98,6 +111,7 @@ const MockData = {
             healthRecord: true,
             rewardRecord: true,
             growthRecord: true,
+            attendance: true,
             gradeImport: true,
             gradeAnalysis: true,
             gradeTrend: true,
@@ -114,6 +128,7 @@ const MockData = {
             healthRecord: true,
             rewardRecord: true,
             growthRecord: true,
+            attendance: true,
             gradeImport: false,
             gradeAnalysis: true,
             gradeTrend: true,
@@ -130,6 +145,7 @@ AppState.users = [...MockData.users];
 AppState.healthRecords = [...MockData.healthRecords];
 AppState.rewardRecords = [...MockData.rewardRecords];
 AppState.growthRecords = [...MockData.growthRecords];
+AppState.attendanceRecords = [...MockData.attendanceRecords];
 AppState.grades = [...MockData.grades];
 
 // ========================================
@@ -356,6 +372,7 @@ function switchModule(moduleName) {
         'health-record': '健康记录',
         'reward-record': '奖惩记录',
         'growth-record': '成长档案',
+        'attendance': '考勤管理',
         'grade-import': '成绩导入',
         'grade-analysis': '成绩分析',
         'grade-trend': '趋势追踪',
@@ -382,6 +399,10 @@ function initModuleData(moduleName) {
             break;
         case 'reward-record':
             loadRewardRecords();
+            break;
+        case 'attendance':
+            loadAttendanceRecords();
+            initAttendanceFilters();
             break;
         case 'grade-analysis':
             loadGradeAnalysis();
@@ -1014,6 +1035,215 @@ function saveGrowthRecord() {
     }
     
     showToast('成长记录添加成功！', 'success');
+}
+
+// ========================================
+// 考勤管理
+// ========================================
+function initAttendanceFilters() {
+    const classFilter = document.getElementById('attendance-class-filter');
+    const studentFilter = document.getElementById('summary-student-filter');
+    
+    const classes = [...new Set(AppState.students.map(s => s.className))];
+    classFilter.innerHTML = '<option value="">全部班级</option>' + 
+        classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    studentFilter.innerHTML = '<option value="">请选择学生</option>' +
+        AppState.students.map(s => `<option value="${s.id}">${s.name} - ${s.className}</option>`).join('');
+}
+
+function loadAttendanceRecords() {
+    const classFilter = document.getElementById('attendance-class-filter').value;
+    const dateFilter = document.getElementById('attendance-date-filter').value;
+    const statusFilter = document.getElementById('attendance-status-filter').value;
+    
+    let records = [...AppState.attendanceRecords];
+    
+    if (classFilter) {
+        records = records.filter(r => r.className === classFilter);
+    }
+    if (dateFilter) {
+        records = records.filter(r => r.date === dateFilter);
+    }
+    if (statusFilter) {
+        records = records.filter(r => r.status === statusFilter);
+    }
+    
+    const tbody = document.getElementById('attendance-list');
+    tbody.innerHTML = records.map(record => {
+        let statusClass = '';
+        if (record.status === '到校') statusClass = 'active';
+        else if (record.status === '请假') statusClass = 'warning';
+        else if (record.status === '缺勤') statusClass = 'danger';
+        
+        return `
+        <tr>
+            <td>${record.studentName}</td>
+            <td>${record.className}</td>
+            <td>${record.date}</td>
+            <td><span class="status-badge ${statusClass}">${record.status}</span></td>
+            <td>
+                <div class="table-actions">
+                    <button class="btn-edit" onclick="editAttendanceRecord('${record.id}')">编辑</button>
+                    <button class="btn-delete" onclick="deleteAttendanceRecord('${record.id}')">删除</button>
+                </div>
+            </td>
+        </tr>
+    `}).join('') || '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">暂无考勤记录</td></tr>';
+}
+
+function showAttendanceModal(record = null) {
+    const isEdit = record !== null;
+    openModal(isEdit ? '编辑考勤记录' : '按班级录入考勤', `
+        <form id="attendance-form" class="modal-form">
+            <input type="hidden" name="id" value="${record?.id || ''}">
+            <div class="form-group">
+                <label>班级</label>
+                <select name="className" id="attendance-class-select" onchange="updateStudentOptions()" required>
+                    <option value="">请选择班级</option>
+                    ${[...new Set(AppState.students.map(s => s.className))].map(c => 
+                        `<option value="${c}" ${record?.className === c ? 'selected' : ''}>${c}</option>`
+                    ).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>学生姓名</label>
+                <select name="studentId" id="attendance-student-select" required>
+                    <option value="">请先选择班级</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>日期</label>
+                <input type="date" name="date" value="${record?.date || new Date().toISOString().split('T')[0]}" required>
+            </div>
+            <div class="form-group">
+                <label>考勤状态</label>
+                <select name="status" required>
+                    <option value="到校" ${record?.status === '到校' ? 'selected' : ''}>到校</option>
+                    <option value="请假" ${record?.status === '请假' ? 'selected' : ''}>请假</option>
+                    <option value="缺勤" ${record?.status === '缺勤' ? 'selected' : ''}>缺勤</option>
+                </select>
+            </div>
+        </form>
+    `, `
+        <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveAttendanceRecord()">保存</button>
+    `);
+    
+    if (record) {
+        setTimeout(() => {
+            updateStudentOptions(record.studentId);
+        }, 100);
+    } else {
+        setTimeout(updateStudentOptions, 100);
+    }
+}
+
+function updateStudentOptions(selectedId = null) {
+    const className = document.getElementById('attendance-class-select').value;
+    const studentSelect = document.getElementById('attendance-student-select');
+    
+    if (!className) {
+        studentSelect.innerHTML = '<option value="">请先选择班级</option>';
+        return;
+    }
+    
+    const students = AppState.students.filter(s => s.className === className);
+    studentSelect.innerHTML = students.map(s => 
+        `<option value="${s.id}" ${selectedId == s.id ? 'selected' : ''}>${s.name}</option>`
+    ).join('');
+}
+
+function saveAttendanceRecord() {
+    const form = document.getElementById('attendance-form');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    const student = AppState.students.find(s => s.id == data.studentId);
+    data.studentName = student ? student.name : '';
+    data.className = document.getElementById('attendance-class-select').value;
+    
+    if (data.id) {
+        const index = AppState.attendanceRecords.findIndex(r => r.id == data.id);
+        if (index !== -1) {
+            AppState.attendanceRecords[index] = { ...AppState.attendanceRecords[index], ...data };
+        }
+    } else {
+        data.id = generateId();
+        AppState.attendanceRecords.push(data);
+    }
+    
+    closeModal();
+    loadAttendanceRecords();
+    showToast('保存成功！', 'success');
+}
+
+function editAttendanceRecord(id) {
+    const record = AppState.attendanceRecords.find(r => r.id == id);
+    if (record) {
+        showAttendanceModal(record);
+    }
+}
+
+function deleteAttendanceRecord(id) {
+    showConfirm('确定要删除该考勤记录吗？', () => {
+        const index = AppState.attendanceRecords.findIndex(r => r.id == id);
+        if (index !== -1) {
+            AppState.attendanceRecords.splice(index, 1);
+            loadAttendanceRecords();
+            showToast('删除成功！', 'success');
+        }
+    });
+}
+
+function queryAttendanceSummary() {
+    const studentId = document.getElementById('summary-student-filter').value;
+    const startDate = document.getElementById('summary-start-date').value;
+    const endDate = document.getElementById('summary-end-date').value;
+    
+    if (!studentId) {
+        showToast('请选择学生', 'warning');
+        return;
+    }
+    
+    let records = AppState.attendanceRecords.filter(r => r.studentId == studentId);
+    
+    if (startDate) {
+        records = records.filter(r => r.date >= startDate);
+    }
+    if (endDate) {
+        records = records.filter(r => r.date <= endDate);
+    }
+    
+    records.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    const present = records.filter(r => r.status === '到校').length;
+    const leave = records.filter(r => r.status === '请假').length;
+    const absent = records.filter(r => r.status === '缺勤').length;
+    const total = records.length;
+    const rate = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+    
+    document.getElementById('summary-present').textContent = present;
+    document.getElementById('summary-leave').textContent = leave;
+    document.getElementById('summary-absent').textContent = absent;
+    document.getElementById('summary-total').textContent = total;
+    document.getElementById('summary-rate').textContent = rate + '%';
+    
+    const tbody = document.getElementById('attendance-summary-list');
+    tbody.innerHTML = records.map(record => {
+        let statusClass = '';
+        if (record.status === '到校') statusClass = 'active';
+        else if (record.status === '请假') statusClass = 'warning';
+        else if (record.status === '缺勤') statusClass = 'danger';
+        
+        return `
+        <tr>
+            <td>${record.date}</td>
+            <td><span class="status-badge ${statusClass}">${record.status}</span></td>
+        </tr>
+    `}).join('') || '<tr><td colspan="2" style="text-align: center; color: var(--text-muted);">暂无考勤记录</td></tr>';
+    
+    document.getElementById('attendance-summary-result').style.display = 'block';
 }
 
 // ========================================
@@ -1812,11 +2042,21 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // 奖惩记录标签页
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    document.querySelectorAll('#module-reward-punishment .tab-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#module-reward-punishment .tab-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             loadRewardRecords(this.dataset.tab);
+        });
+    });
+    
+    // 考勤管理标签页
+    document.querySelectorAll('#module-attendance .tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#module-attendance .tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#module-attendance .tab-content').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('tab-' + this.dataset.tab).classList.add('active');
         });
     });
     

@@ -13,6 +13,7 @@ const AppState = {
     healthRecords: [],
     rewardRecords: [],
     growthRecords: [],
+    attendanceRecords: [],
     users: [],
     chartInstances: {}
 };
@@ -53,6 +54,18 @@ const MockData = {
         { id: 3, studentId: 1, studentName: '张三', date: '2024-01-10', title: '入学记录', content: '张三同学正式入学，分配到三年级一班。' }
     ],
     
+    attendanceRecords: [
+        { id: 1, studentId: 1, studentName: '张三', className: '三年级一班', date: '2024-04-10', status: '到校' },
+        { id: 2, studentId: 2, studentName: '李四', className: '三年级一班', date: '2024-04-10', status: '到校' },
+        { id: 3, studentId: 5, studentName: '钱七', className: '三年级一班', date: '2024-04-10', status: '请假' },
+        { id: 4, studentId: 1, studentName: '张三', className: '三年级一班', date: '2024-04-11', status: '到校' },
+        { id: 5, studentId: 2, studentName: '李四', className: '三年级一班', date: '2024-04-11', status: '缺勤' },
+        { id: 6, studentId: 3, studentName: '王五', className: '三年级二班', date: '2024-04-10', status: '到校' },
+        { id: 7, studentId: 4, studentName: '赵六', className: '三年级二班', date: '2024-04-10', status: '到校' },
+        { id: 8, studentId: 3, studentName: '王五', className: '三年级二班', date: '2024-04-11', status: '请假' },
+        { id: 9, studentId: 4, studentName: '赵六', className: '三年级二班', date: '2024-04-11', status: '到校' }
+    ],
+    
     exams: [
         { id: 1, name: '2024年春季期中考试', date: '2024-04-15', type: '期中' },
         { id: 2, name: '2024年春季期末考试', date: '2024-07-01', type: '期末' },
@@ -82,6 +95,7 @@ const MockData = {
             healthRecord: true,
             rewardRecord: true,
             growthRecord: true,
+            attendance: true,
             gradeImport: true,
             gradeAnalysis: true,
             gradeTrend: true,
@@ -98,6 +112,7 @@ const MockData = {
             healthRecord: true,
             rewardRecord: true,
             growthRecord: true,
+            attendance: true,
             gradeImport: true,
             gradeAnalysis: true,
             gradeTrend: true,
@@ -114,6 +129,7 @@ const MockData = {
             healthRecord: true,
             rewardRecord: true,
             growthRecord: true,
+            attendance: true,
             gradeImport: false,
             gradeAnalysis: true,
             gradeTrend: true,
@@ -130,6 +146,7 @@ AppState.users = [...MockData.users];
 AppState.healthRecords = [...MockData.healthRecords];
 AppState.rewardRecords = [...MockData.rewardRecords];
 AppState.growthRecords = [...MockData.growthRecords];
+AppState.attendanceRecords = [...MockData.attendanceRecords];
 AppState.grades = [...MockData.grades];
 
 // ========================================
@@ -285,6 +302,7 @@ const modulePermissionMap = {
     'health-record': 'healthRecord',
     'reward-record': 'rewardRecord',
     'growth-record': 'growthRecord',
+    'attendance': 'attendance',
     'grade-import': 'gradeImport',
     'grade-analysis': 'gradeAnalysis',
     'grade-trend': 'gradeTrend',
@@ -356,6 +374,7 @@ function switchModule(moduleName) {
         'health-record': '健康记录',
         'reward-record': '奖惩记录',
         'growth-record': '成长档案',
+        'attendance': '学生考勤',
         'grade-import': '成绩导入',
         'grade-analysis': '成绩分析',
         'grade-trend': '趋势追踪',
@@ -382,6 +401,9 @@ function initModuleData(moduleName) {
             break;
         case 'reward-record':
             loadRewardRecords();
+            break;
+        case 'attendance':
+            loadAttendanceRecords();
             break;
         case 'grade-analysis':
             loadGradeAnalysis();
@@ -1014,6 +1036,154 @@ function saveGrowthRecord() {
     }
     
     showToast('成长记录添加成功！', 'success');
+}
+
+// ========================================
+// 考勤管理
+// ========================================
+function loadAttendanceRecords() {
+    const classes = [...new Set(AppState.students.map(s => s.className))];
+    const classSelect = document.getElementById('attendance-class');
+    classSelect.innerHTML = '<option value="">请选择班级</option>' + 
+        classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('attendance-date').value = today;
+    
+    const studentSelect = document.getElementById('stats-student');
+    studentSelect.innerHTML = '<option value="">请选择学生</option>' + 
+        AppState.students.map(s => `<option value="${s.id}">${s.name} - ${s.className}</option>`).join('');
+    
+    document.getElementById('stats-start-date').value = '';
+    document.getElementById('stats-end-date').value = '';
+    document.getElementById('attendance-summary').style.display = 'none';
+}
+
+function loadAttendanceStudents() {
+    const className = document.getElementById('attendance-class').value;
+    const date = document.getElementById('attendance-date').value;
+    const tbody = document.getElementById('attendance-student-list');
+    
+    if (!className || !date) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">请选择班级和日期</td></tr>';
+        return;
+    }
+    
+    const classStudents = AppState.students.filter(s => s.className === className);
+    
+    if (classStudents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">该班级暂无学生</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = classStudents.map(student => {
+        const existingRecord = AppState.attendanceRecords.find(
+            r => r.studentId === student.id && r.date === date
+        );
+        const status = existingRecord ? existingRecord.status : '到校';
+        
+        return `
+            <tr>
+                <td>${student.id}</td>
+                <td>${student.name}</td>
+                <td>${student.gender}</td>
+                <td>
+                    <select class="attendance-status" data-student-id="${student.id}" data-student-name="${student.name}" data-class-name="${className}">
+                        <option value="到校" ${status === '到校' ? 'selected' : ''}>到校</option>
+                        <option value="请假" ${status === '请假' ? 'selected' : ''}>请假</option>
+                        <option value="缺勤" ${status === '缺勤' ? 'selected' : ''}>缺勤</option>
+                    </select>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function saveAttendance() {
+    const className = document.getElementById('attendance-class').value;
+    const date = document.getElementById('attendance-date').value;
+    
+    if (!className || !date) {
+        showToast('请选择班级和日期', 'error');
+        return;
+    }
+    
+    const statusSelects = document.querySelectorAll('.attendance-status');
+    let savedCount = 0;
+    
+    statusSelects.forEach(select => {
+        const studentId = parseInt(select.dataset.studentId);
+        const studentName = select.dataset.studentName;
+        const status = select.value;
+        
+        const existingIndex = AppState.attendanceRecords.findIndex(
+            r => r.studentId === studentId && r.date === date
+        );
+        
+        if (existingIndex >= 0) {
+            AppState.attendanceRecords[existingIndex].status = status;
+        } else {
+            AppState.attendanceRecords.push({
+                id: generateId(),
+                studentId: studentId,
+                studentName: studentName,
+                className: className,
+                date: date,
+                status: status
+            });
+        }
+        savedCount++;
+    });
+    
+    showToast(`考勤保存成功！共保存 ${savedCount} 条记录`, 'success');
+}
+
+function loadAttendanceStats() {
+    const studentId = document.getElementById('stats-student').value;
+    const startDate = document.getElementById('stats-start-date').value;
+    const endDate = document.getElementById('stats-end-date').value;
+    
+    if (!studentId) {
+        showToast('请选择学生', 'error');
+        return;
+    }
+    
+    let records = AppState.attendanceRecords.filter(r => r.studentId == studentId);
+    
+    if (startDate) {
+        records = records.filter(r => r.date >= startDate);
+    }
+    if (endDate) {
+        records = records.filter(r => r.date <= endDate);
+    }
+    
+    if (records.length === 0) {
+        showToast('该时间段内暂无考勤记录', 'info');
+        document.getElementById('attendance-summary').style.display = 'none';
+        return;
+    }
+    
+    const present = records.filter(r => r.status === '到校').length;
+    const leave = records.filter(r => r.status === '请假').length;
+    const absent = records.filter(r => r.status === '缺勤').length;
+    const total = records.length;
+    const rate = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+    
+    document.getElementById('stats-present').textContent = present;
+    document.getElementById('stats-leave').textContent = leave;
+    document.getElementById('stats-absent').textContent = absent;
+    document.getElementById('stats-rate').textContent = rate + '%';
+    
+    const detailTbody = document.getElementById('attendance-detail-list');
+    detailTbody.innerHTML = records.map(r => `
+        <tr>
+            <td>${r.date}</td>
+            <td>${r.className}</td>
+            <td><span class="status-badge ${r.status === '到校' ? 'active' : r.status === '请假' ? '' : 'inactive'}">${r.status}</span></td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('attendance-summary').style.display = 'block';
 }
 
 // ========================================
@@ -1811,12 +1981,25 @@ document.addEventListener('DOMContentLoaded', function() {
         updateStudent(id, data);
     });
     
-    // 奖惩记录标签页
+    // 通用标签页切换
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const tabContainer = this.closest('.tabs');
+            if (!tabContainer) return;
+            
+            tabContainer.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            loadRewardRecords(this.dataset.tab);
+            
+            const tabId = this.dataset.tab;
+            const tabContent = document.getElementById('tab-' + tabId);
+            if (tabContent) {
+                tabContent.parentElement.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tabContent.classList.add('active');
+            }
+            
+            if (tabId === 'reward-record' || tabId === 'punishment-record') {
+                loadRewardRecords(tabId);
+            }
         });
     });
     

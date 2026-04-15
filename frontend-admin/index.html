@@ -180,6 +180,10 @@
                         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                         <span>成长档案</span>
                     </a>
+                    <a href="#" class="nav-item" data-module="attendance">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                        <span>学生考勤</span>
+                    </a>
                 </div>
                 
                 <div class="nav-section">
@@ -755,6 +759,100 @@
                                 <button class="btn btn-primary" onclick="showGrowthModal()">添加成长记录</button>
                             </div>
                             <div class="growth-timeline" id="growth-timeline">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 学生考勤模块 -->
+                <div id="module-attendance" class="module-content">
+                    <div class="module-header">
+                        <h3>学生考勤</h3>
+                        <p>按班级和日期记录学生考勤情况</p>
+                    </div>
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="attendance-record">考勤录入</button>
+                        <button class="tab-btn" data-tab="attendance-stats">考勤统计</button>
+                    </div>
+                    
+                    <div id="tab-attendance-record" class="tab-content active">
+                        <div class="toolbar">
+                            <div class="filter-item">
+                                <label>选择班级</label>
+                                <select id="attendance-class" onchange="loadAttendanceStudents()">
+                                    <option value="">请选择班级</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label>考勤日期</label>
+                                <input type="date" id="attendance-date" onchange="loadAttendanceStudents()">
+                            </div>
+                            <button class="btn btn-primary" onclick="saveAttendance()">保存考勤</button>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>学号</th>
+                                    <th>姓名</th>
+                                    <th>性别</th>
+                                    <th>考勤状态</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-student-list">
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div id="tab-attendance-stats" class="tab-content">
+                        <div class="toolbar">
+                            <div class="filter-item">
+                                <label>选择学生</label>
+                                <select id="stats-student">
+                                    <option value="">请选择学生</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label>开始日期</label>
+                                <input type="date" id="stats-start-date">
+                            </div>
+                            <div class="filter-item">
+                                <label>结束日期</label>
+                                <input type="date" id="stats-end-date">
+                            </div>
+                            <button class="btn btn-primary" onclick="loadAttendanceStats()">查询统计</button>
+                        </div>
+                        <div id="attendance-summary" style="display: none;">
+                            <div class="analysis-cards">
+                                <div class="analysis-card">
+                                    <h4>到校天数</h4>
+                                    <span class="value" id="stats-present">0</span>
+                                </div>
+                                <div class="analysis-card">
+                                    <h4>请假天数</h4>
+                                    <span class="value" id="stats-leave">0</span>
+                                </div>
+                                <div class="analysis-card">
+                                    <h4>缺勤天数</h4>
+                                    <span class="value" id="stats-absent">0</span>
+                                </div>
+                                <div class="analysis-card">
+                                    <h4>出勤率</h4>
+                                    <span class="value" id="stats-rate">0%</span>
+                                </div>
+                            </div>
+                            <div class="grade-history">
+                                <h4>考勤明细</h4>
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>日期</th>
+                                            <th>班级</th>
+                                            <th>考勤状态</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="attendance-detail-list">
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>

@@ -13,6 +13,7 @@ const AppState = {
     healthRecords: [],
     rewardRecords: [],
     growthRecords: [],
+    attendanceRecords: [],
     users: [],
     chartInstances: {}
 };
@@ -53,6 +54,17 @@ const MockData = {
         { id: 3, studentId: 1, studentName: '张三', date: '2024-01-10', title: '入学记录', content: '张三同学正式入学，分配到三年级一班。' }
     ],
     
+    attendanceRecords: [
+        { id: 1, studentId: 1, studentName: '张三', className: '三年级一班', date: '2024-04-10', status: 'present', notes: '' },
+        { id: 2, studentId: 1, studentName: '张三', className: '三年级一班', date: '2024-04-11', status: 'present', notes: '' },
+        { id: 3, studentId: 1, studentName: '张三', className: '三年级一班', date: '2024-04-12', status: 'leave', notes: '感冒请假' },
+        { id: 4, studentId: 1, studentName: '张三', className: '三年级一班', date: '2024-04-15', status: 'present', notes: '' },
+        { id: 5, studentId: 2, studentName: '李四', className: '三年级一班', date: '2024-04-10', status: 'present', notes: '' },
+        { id: 6, studentId: 2, studentName: '李四', className: '三年级一班', date: '2024-04-11', status: 'absent', notes: '无故缺勤' },
+        { id: 7, studentId: 2, studentName: '李四', className: '三年级一班', date: '2024-04-12', status: 'present', notes: '' },
+        { id: 8, studentId: 2, studentName: '李四', className: '三年级一班', date: '2024-04-15', status: 'present', notes: '' }
+    ],
+    
     exams: [
         { id: 1, name: '2024年春季期中考试', date: '2024-04-15', type: '期中' },
         { id: 2, name: '2024年春季期末考试', date: '2024-07-01', type: '期末' },
@@ -81,6 +93,7 @@ const MockData = {
             studentQuery: true,
             healthRecord: true,
             rewardRecord: true,
+            attendanceRecord: true,
             growthRecord: true,
             gradeImport: true,
             gradeAnalysis: true,
@@ -97,6 +110,7 @@ const MockData = {
             studentQuery: true,
             healthRecord: true,
             rewardRecord: true,
+            attendanceRecord: true,
             growthRecord: true,
             gradeImport: true,
             gradeAnalysis: true,
@@ -113,6 +127,7 @@ const MockData = {
             studentQuery: true,
             healthRecord: true,
             rewardRecord: true,
+            attendanceRecord: true,
             growthRecord: true,
             gradeImport: false,
             gradeAnalysis: true,
@@ -130,6 +145,7 @@ AppState.users = [...MockData.users];
 AppState.healthRecords = [...MockData.healthRecords];
 AppState.rewardRecords = [...MockData.rewardRecords];
 AppState.growthRecords = [...MockData.growthRecords];
+AppState.attendanceRecords = [...MockData.attendanceRecords];
 AppState.grades = [...MockData.grades];
 
 // ========================================
@@ -284,6 +300,7 @@ const modulePermissionMap = {
     'student-query': 'studentQuery',
     'health-record': 'healthRecord',
     'reward-record': 'rewardRecord',
+    'attendance-record': 'attendanceRecord',
     'growth-record': 'growthRecord',
     'grade-import': 'gradeImport',
     'grade-analysis': 'gradeAnalysis',
@@ -355,6 +372,7 @@ function switchModule(moduleName) {
         'student-query': '信息查询',
         'health-record': '健康记录',
         'reward-record': '奖惩记录',
+        'attendance-record': '考勤管理',
         'growth-record': '成长档案',
         'grade-import': '成绩导入',
         'grade-analysis': '成绩分析',
@@ -1439,6 +1457,191 @@ function exportReport() {
 }
 
 // ========================================
+// 考勤管理
+// ========================================
+
+// 加载学生列表用于考勤录入
+function loadAttendanceForInput() {
+    const className = document.getElementById('attendance-class').value;
+    const date = document.getElementById('attendance-date').value;
+    
+    if (!className || !date) {
+        showToast('请选择班级和日期', 'warning');
+        return;
+    }
+    
+    // 获取该班级的所有学生
+    const classStudents = AppState.students.filter(s => s.className === className);
+    const tbody = document.getElementById('attendance-input-list');
+    
+    if (classStudents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">该班级暂无学生</td></tr>';
+        return;
+    }
+    
+    // 获取该日期已有的考勤记录
+    const existingAttendance = AppState.attendanceRecords.filter(r => r.className === className && r.date === date);
+    
+    // 生成表格行
+    tbody.innerHTML = classStudents.map(student => {
+        // 查找学生已有的考勤记录
+        const record = existingAttendance.find(r => r.studentId == student.id);
+        const status = record ? record.status : 'present'; // 默认到校
+        const notes = record ? record.notes : '';
+        
+        return `
+            <tr data-student-id="${student.id}">
+                <td>${student.name}</td>
+                <td>${student.gender}</td>
+                <td>${student.className}</td>
+                <td>
+                    <select name="status" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary);">
+                        <option value="present" ${status === 'present' ? 'selected' : ''}>到校</option>
+                        <option value="leave" ${status === 'leave' ? 'selected' : ''}>请假</option>
+                        <option value="absent" ${status === 'absent' ? 'selected' : ''}>缺勤</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" name="notes" value="${notes}" placeholder="备注" style="width: 100%; padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary);">
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// 保存全部考勤记录
+function saveAllAttendance() {
+    const className = document.getElementById('attendance-class').value;
+    const date = document.getElementById('attendance-date').value;
+    
+    if (!className || !date) {
+        showToast('请选择班级和日期', 'warning');
+        return;
+    }
+    
+    const rows = document.querySelectorAll('#attendance-input-list tr[data-student-id]');
+    if (rows.length === 0) {
+        showToast('没有可保存的考勤记录', 'warning');
+        return;
+    }
+    
+    // 删除该班级该日期已有的考勤记录
+    AppState.attendanceRecords = AppState.attendanceRecords.filter(r => 
+        !(r.className === className && r.date === date)
+    );
+    
+    // 保存新的考勤记录
+    rows.forEach(row => {
+        const studentId = row.dataset.studentId;
+        const student = AppState.students.find(s => s.id == studentId);
+        if (!student) return;
+        
+        const status = row.querySelector('[name="status"]').value;
+        const notes = row.querySelector('[name="notes"]').value.trim();
+        
+        const newRecord = {
+            id: generateId(),
+            studentId: parseInt(studentId),
+            studentName: student.name,
+            className: className,
+            date: date,
+            status: status,
+            notes: notes
+        };
+        
+        AppState.attendanceRecords.push(newRecord);
+    });
+    
+    showToast('考勤记录保存成功！', 'success');
+}
+
+// 查询学生考勤汇总
+function queryAttendanceSummary() {
+    const studentName = document.getElementById('attendance-query-name').value.trim();
+    const startDate = document.getElementById('attendance-start-date').value;
+    const endDate = document.getElementById('attendance-end-date').value;
+    
+    if (!studentName) {
+        showToast('请输入学生姓名', 'warning');
+        return;
+    }
+    
+    if (!startDate || !endDate) {
+        showToast('请选择开始和结束日期', 'warning');
+        return;
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+        showToast('开始日期不能晚于结束日期', 'error');
+        return;
+    }
+    
+    // 查找学生
+    const student = AppState.students.find(s => s.name.includes(studentName));
+    if (!student) {
+        showToast('未找到该学生', 'warning');
+        document.getElementById('attendance-summary').style.display = 'none';
+        document.getElementById('attendance-query-results').style.display = 'none';
+        return;
+    }
+    
+    // 筛选该学生在指定日期范围内的考勤记录
+    const records = AppState.attendanceRecords.filter(r => 
+        r.studentId == student.id && 
+        r.date >= startDate && 
+        r.date <= endDate
+    ).sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    // 计算汇总数据
+    const presentCount = records.filter(r => r.status === 'present').length;
+    const leaveCount = records.filter(r => r.status === 'leave').length;
+    const absentCount = records.filter(r => r.status === 'absent').length;
+    const totalDays = records.length;
+    const attendanceRate = totalDays > 0 ? Math.round((presentCount / totalDays) * 100) : 0;
+    
+    // 更新汇总卡片
+    document.getElementById('total-attendance-days').textContent = totalDays;
+    document.getElementById('present-count').textContent = presentCount;
+    document.getElementById('leave-count').textContent = leaveCount;
+    document.getElementById('absent-count').textContent = absentCount;
+    document.getElementById('attendance-rate').textContent = attendanceRate + '%';
+    
+    // 更新记录列表
+    const tbody = document.getElementById('attendance-query-list');
+    tbody.innerHTML = records.map(record => {
+        let statusText = '';
+        let statusClass = '';
+        switch(record.status) {
+            case 'present':
+                statusText = '到校';
+                statusClass = 'active';
+                break;
+            case 'leave':
+                statusText = '请假';
+                statusClass = 'warning';
+                break;
+            case 'absent':
+                statusText = '缺勤';
+                statusClass = 'inactive';
+                break;
+        }
+        
+        return `
+            <tr>
+                <td>${record.date}</td>
+                <td>${record.className}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>${record.notes || '-'}</td>
+            </tr>
+        `;
+    }).join('') || '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">该时间段内暂无考勤记录</td></tr>';
+    
+    // 显示结果
+    document.getElementById('attendance-summary').style.display = 'block';
+    document.getElementById('attendance-query-results').style.display = 'block';
+}
+
+// ========================================
 // 用户管理
 // ========================================
 function loadUserList() {
@@ -1812,9 +2015,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // 奖惩记录标签页
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    document.querySelectorAll('#module-reward-record .tab-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#module-reward-record .tab-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             loadRewardRecords(this.dataset.tab);
         });
@@ -1828,17 +2031,30 @@ document.addEventListener('DOMContentLoaded', function() {
             loadPermissions(this.dataset.role);
         });
     });
-    
+
+    // 考勤模块标签切换
+    document.querySelectorAll('#module-attendance-record .tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // 切换标签状态
+            document.querySelectorAll('#module-attendance-record .tab-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // 切换内容显示
+            document.querySelectorAll('#module-attendance-record .tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(this.dataset.tab + '-tab').classList.add('active');
+        });
+    });
+
     // 模态框关闭
     document.getElementById('modal-overlay').addEventListener('click', function(e) {
         if (e.target === this) {
             closeModal();
         }
     });
-    
+
     // 文件上传
     setupFileUpload();
-    
+
     // ESC关闭模态框
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {

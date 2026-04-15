@@ -180,6 +180,10 @@
                         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                         <span>成长档案</span>
                     </a>
+                    <a href="#" class="nav-item" data-module="attendance">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                        <span>考勤管理</span>
+                    </a>
                 </div>
                 
                 <div class="nav-section">
@@ -756,6 +760,119 @@
                             </div>
                             <div class="growth-timeline" id="growth-timeline">
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 考勤管理模块 -->
+                <div id="module-attendance" class="module-content">
+                    <div class="module-header">
+                        <h3>考勤管理</h3>
+                        <p>管理学生考勤记录</p>
+                    </div>
+                    <div class="toolbar">
+                        <button class="btn btn-primary" onclick="showAttendanceModal()">
+                            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                            按班级录入考勤
+                        </button>
+                    </div>
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="attendance-records">考勤记录</button>
+                        <button class="tab-btn" data-tab="attendance-summary">出勤汇总</button>
+                    </div>
+                    
+                    <!-- 考勤记录列表 -->
+                    <div id="tab-attendance-records" class="tab-content active">
+                        <div class="query-filters">
+                            <div class="filter-item">
+                                <label>班级</label>
+                                <select id="attendance-class-filter" onchange="loadAttendanceRecords()">
+                                    <option value="">全部班级</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label>日期</label>
+                                <input type="date" id="attendance-date-filter" onchange="loadAttendanceRecords()">
+                            </div>
+                            <div class="filter-item">
+                                <label>状态</label>
+                                <select id="attendance-status-filter" onchange="loadAttendanceRecords()">
+                                    <option value="">全部状态</option>
+                                    <option value="到校">到校</option>
+                                    <option value="请假">请假</option>
+                                    <option value="缺勤">缺勤</option>
+                                </select>
+                            </div>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>学生姓名</th>
+                                    <th>班级</th>
+                                    <th>日期</th>
+                                    <th>考勤状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-list">
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 出勤汇总查询 -->
+                    <div id="tab-attendance-summary" class="tab-content">
+                        <div class="query-filters">
+                            <div class="filter-item">
+                                <label>学生姓名</label>
+                                <select id="summary-student-filter">
+                                    <option value="">请选择学生</option>
+                                </select>
+                            </div>
+                            <div class="filter-item">
+                                <label>开始日期</label>
+                                <input type="date" id="summary-start-date">
+                            </div>
+                            <div class="filter-item">
+                                <label>结束日期</label>
+                                <input type="date" id="summary-end-date">
+                            </div>
+                            <div class="filter-item">
+                                <button class="btn btn-primary" onclick="queryAttendanceSummary()">查询汇总</button>
+                            </div>
+                        </div>
+                        <div id="attendance-summary-result" style="display: none;">
+                            <div class="summary-stats" style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">
+                                <div class="stat-card" style="background: #f8f9fa; padding: 20px; border-radius: 8px; min-width: 120px; text-align: center;">
+                                    <div style="font-size: 32px; font-weight: bold; color: #28a745;" id="summary-present">0</div>
+                                    <div style="color: #666;">到校</div>
+                                </div>
+                                <div class="stat-card" style="background: #f8f9fa; padding: 20px; border-radius: 8px; min-width: 120px; text-align: center;">
+                                    <div style="font-size: 32px; font-weight: bold; color: #ffc107;" id="summary-leave">0</div>
+                                    <div style="color: #666;">请假</div>
+                                </div>
+                                <div class="stat-card" style="background: #f8f9fa; padding: 20px; border-radius: 8px; min-width: 120px; text-align: center;">
+                                    <div style="font-size: 32px; font-weight: bold; color: #dc3545;" id="summary-absent">0</div>
+                                    <div style="color: #666;">缺勤</div>
+                                </div>
+                                <div class="stat-card" style="background: #f8f9fa; padding: 20px; border-radius: 8px; min-width: 120px; text-align: center;">
+                                    <div style="font-size: 32px; font-weight: bold; color: #667eea;" id="summary-total">0</div>
+                                    <div style="color: #666;">总天数</div>
+                                </div>
+                                <div class="stat-card" style="background: #f8f9fa; padding: 20px; border-radius: 8px; min-width: 120px; text-align: center;">
+                                    <div style="font-size: 32px; font-weight: bold; color: #17a2b8;" id="summary-rate">0%</div>
+                                    <div style="color: #666;">出勤率</div>
+                                </div>
+                            </div>
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>日期</th>
+                                        <th>考勤状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendance-summary-list">
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
